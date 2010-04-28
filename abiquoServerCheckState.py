@@ -216,6 +216,22 @@ if err == False:
   out += green('OK')
 print out
 
+#           #
+# check MTA #
+#           #
+
+out = 'checking MTA: '
+err = False
+
+status = commands.getoutput('netstat -tnlp | grep ":25"')
+if status == None or status == '':
+  out += red('\n\tMTA is not configured in the port 25')
+  err = True
+
+if err == False:
+  out += green('OK')
+print out
+
 #                   #
 # check DHCP server #
 #                   #
