@@ -1,20 +1,28 @@
+#!/usr/bin/env python
 #
 #  script to check the abiquo's server machine has all dependencies configured
 #
 
 import os
+import sys
 import re
 import commands
 import ConfigParser
 from tempfile import NamedTemporaryFile
 
 TOMCAT_PATH = '/opt/abiquo-server/tomcat'
+ABIQUO_SERVER_PATH = '/opt/abiquo-server'
+
 
 def green(message):
-  return '\033[32m' + message + '\033[0m'
+  return '\033[1;32m' + message + '\033[0m'
 
 def red(message):
-  return "\033[31m" + message + "\033[0m"
+  return "\033[1;31m" + message + "\033[0m"
+
+if os.path.exists(ABIQUO_SERVER_PATH) == False:
+  print red("\nThis host is not an Abiquo Server. Aborting\n")
+  sys.exit(0)
 
 #                  #
 # check JNDI names #
@@ -26,9 +34,9 @@ err = False
 bpmContextFile = '%s/conf/Catalina/localhost/bpm-async.xml'
 if os.path.exists(bpmContextFile) == False:
   bpmContextFile = '%s/webapps/bpm-async/META-INF/context.xml'
-
+ 
+jndiFile = open(bpmContextFile % TOMCAT_PATH).read()
 try:
-  jndiFile = open(bpmContextFile % TOMCAT_PATH).read()
 
   if re.search('name="jdbc/abiquoBpmDB"', jndiFile) == None:
     out += red('\n\tJNDI is not properly configured. Check that `%s` includes the name `jdbc/abiquoBpmDB`' % bpmContextFile)
@@ -43,7 +51,7 @@ try:
   if re.search('name="jdbc/abiquoDB"', jndiFile) == None:
     out += red('\n\tJNDI is not properly configured. Check that `%s` includes the name `jdbc/abiquoDB`' % serverContextFile)
     err = True
-except IOError as io:
+except IOError,io:
   out += red('File not found: ' + io.filename)
   err = True
 
@@ -150,18 +158,17 @@ try:
     if config.has_option('global', 'security') == False or config.get('global', 'security') != 'shared':
       out += red('\n\tsecurity element into [global] should be `shared`')
       err = True
-except ConfigParser.ParsingError as ex:
+except ConfigParser.ParsingError,ex:
   err = True
   out += red('can not parse /etc/samba/smb.conf')
   print ex
-except IOError as io:
+except IOError,io:
   out += red('File not found: ' + io.filename)
   err = True
-finally:
-  os.unlink(tmp.name)
-  if err == False:
-    out += gree('OK')
-  print out
+os.unlink(tmp.name)
+if err == False:
+  out += gree('OK')
+print out
 
 #                        #
 # check bpm dependencies #
@@ -249,7 +256,7 @@ try:
     if re.search(r'omapi\-port\s+7911', dhcpd) == None:
       out += red('\n\tOmapi port is not configured in `/etc/dhcpd.conf`. Check this file contains `omapi-port 7911`')
       err = True
-except IOError as io:
+except IOError,io:
   out += red('\n\tfile not found: ' + io.filename)
   err = True
 
@@ -299,7 +306,7 @@ try:
     if addrFound == False:
       out += red('\n\tEvent sync address not found. Ensure `%s` is configured as a host address.' % addr)
       err = True
-except IOError as io:
+except IOError,io:
   out += red('File not found: ' + io.filename)
   err = True
 
