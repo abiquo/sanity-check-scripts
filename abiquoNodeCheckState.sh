@@ -99,6 +99,12 @@ function check_firewall() {
     fi
     echo -e "  Runlevel config:\tcurrent = ${CURRENTRL}, default = ${DEFAULTRL}"
     echo -e "  Firewall activation:\t${FWCONFIG}"
+    echo -ne "  SELinux status:\t"
+    if [[ $(ls -A /selinux) ]]; then
+        echo "ENABLED"
+    else
+        echo "DISABLED"
+    fi
 }
 
 function check_bridge() {
