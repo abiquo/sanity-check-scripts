@@ -257,6 +257,22 @@ if err == False:
   out += green('OK')
 print out
 
+#               #
+# check SELinux #
+#               #
+
+out = 'checking SELinux: '
+err = False
+
+status = commands.getoutput('ls -A /selinux')
+if status != None and status != '':
+  out += red('SELinux is ENABLED. It must be DISABLED')
+  err = True
+
+if err == False:
+  out += green('OK')
+print out
+
 #                          #
 # check event sync address #
 #                          #
