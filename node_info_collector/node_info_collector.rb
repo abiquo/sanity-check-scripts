@@ -16,6 +16,11 @@ Dir.glob("#{NODE_COLLECTOR}/lib/*.jar").each { |jar| require jar }
 JRuby.runtime.jruby_class_loader.addURL(java.io.File.new("#{NODE_COLLECTOR}/classes").to_url)
 
 import org.springframework.context.support.ClassPathXmlApplicationContext
+import java.util.logging.Level
+import java.util.logging.Logger
+
+logger = Logger.getLogger("")
+logger.setLevel(Level::OFF)
 
 app_context = ClassPathXmlApplicationContext.new("file:" + File.expand_path("#{NODE_COLLECTOR}/springresources/applicationcontext.xml"))
 
