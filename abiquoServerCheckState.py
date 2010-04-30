@@ -63,7 +63,7 @@ print out
 # check database connection and credentials #
 #                                           #
 
-dbUsername, dbPassword = re.search(r'username="([^"]+)"\s+password="([^"]+)"', jndiFile).groups()
+dbUsername, dbPassword = re.search(r'username="([^"]+)"\s+password="([^"]*)"', jndiFile).groups()
 
 dbSearch = re.search(r'url="[^:]+:[^:]+://(?P<host>[^:]+)(:(?P<port>[^/]+))?/(?P<schema>.+)\?.+"', jndiFile)
 dbHost = dbSearch.group('host')
