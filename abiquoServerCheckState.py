@@ -8,7 +8,7 @@ import sys
 import re
 import commands
 import ConfigParser
-from tempfile import NamedTemporaryFile
+import tempfile
 
 TOMCAT_PATH = '/opt/abiquo-server/tomcat'
 ABIQUO_SERVER_PATH = '/opt/abiquo-server'
@@ -32,19 +32,20 @@ out = 'checking JNDI: '
 err = False
 
 bpmContextFile = '%s/conf/Catalina/localhost/bpm-async.xml'
-if os.path.exists(bpmContextFile) == False:
+if os.path.exists(bpmContextFile % TOMCAT_PATH) == False:
   bpmContextFile = '%s/webapps/bpm-async/META-INF/context.xml'
+
+serverContextFile = '%s/conf/Catalina/localhost/server.xml'
+if os.path.exists(serverContextFile % TOMCAT_PATH) == False:
+  serverContextFile = '%s/webapps/server/META-INF/context.xml'
  
-jndiFile = open(bpmContextFile % TOMCAT_PATH).read()
 try:
+  jndiFile = open(bpmContextFile % TOMCAT_PATH).read()
 
   if re.search('name="jdbc/abiquoBpmDB"', jndiFile) == None:
     out += red('\n\tJNDI is not properly configured. Check that `%s` includes the name `jdbc/abiquoBpmDB`' % bpmContextFile)
     err = True
 
-  serverContextFile = '%s/conf/Catalina/localhost/server.xml'
-  if os.path.exists(serverContextFile) == False:
-    serverContextFile = '%s/webapps/server/META-INF/context.xml'
 
   jndiFile = open(serverContextFile % TOMCAT_PATH).read()
 
@@ -62,28 +63,37 @@ print out
 #                                           #
 # check database connection and credentials #
 #                                           #
+try:
+  jndiFile = open(serverContextFile % TOMCAT_PATH).read()
+  dbUsername, dbPassword = re.search(r'username="([^"]+)"\s+password="([^"]*)"', jndiFile).groups()
 
-dbUsername, dbPassword = re.search(r'username="([^"]+)"\s+password="([^"]*)"', jndiFile).groups()
+  dbSearch = re.search(r'url="[^:]+:[^:]+://(?P<host>[^:]+)(:(?P<port>[^/]+))?/(?P<schema>.+)\?.+"', jndiFile)
+  dbHost = dbSearch.group('host')
+  dbPort = dbSearch.group('port')
+  if dbPort == None:
+    dbPort = '3306'
+  dbSchema = dbSearch.group('schema')
 
-dbSearch = re.search(r'url="[^:]+:[^:]+://(?P<host>[^:]+)(:(?P<port>[^/]+))?/(?P<schema>.+)\?.+"', jndiFile)
-dbHost = dbSearch.group('host')
-dbPort = dbSearch.group('port')
-if dbPort == None:
-  dbPort = '3306'
-dbSchema = dbSearch.group('schema')
+  out = 'checking Database: '
+  err = False
 
-out = 'checking Database: '
-err = False
-
-status = commands.getoutput('sudo service mysql status')
-if re.search('stopped', status) != None:
-  out += red('\n\tMysql service is not running')
-  err = True
-else:
-  dbOut = commands.getoutput('mysql -u%s -p%s -h%s -P%s -e "use %s"' % (dbUsername, dbPassword, dbHost, dbPort, dbSchema))
-  if dbOut != None and dbOut != '':
-    out += red('\n\t' + dbOut)
+  status = commands.getoutput('service mysql status')
+  if re.search('stopped', status) != None:
+    out += red('\n\tMysql service is not running')
     err = True
+  else:
+    if dbPassword == '':
+      dbOut = commands.getoutput('mysql -u%s -h%s -P%s -e "use %s"' % (dbUsername, dbHost, dbPort, dbSchema))
+    else:
+      dbOut = commands.getoutput('mysql -u%s -p%s -h%s -P%s -e "use %s"' % (dbUsername, dbPassword, dbHost, dbPort, dbSchema))
+    
+    if dbOut != None and dbOut != '':
+      out += red('\n\t' + dbOut)
+      err = True
+
+except IOError, io:
+  out += red('File not found: ' + io.filename)
+  err = True
 
 if err == False:
   out += green('OK')
@@ -97,25 +107,23 @@ out = 'checking NFS: '
 err = False
 
 status = commands.getoutput('service nfs status')
-if re.search('nfsd running', status) == None:
+if re.search(r'nfsd.*running', status) == None:
   out += red('\n\tNfs service is not running')
   err = True
 
-exportfs = commands.getoutput('sudo exportfs')
 nfsCredentials = False
-
-nfsExported = re.search('.*/opt/vm_repository\s*<world>', exportfs)
 for line in open('/etc/exports'):
-  if re.search('^/opt/vm_repository.+rw', line):
+  if re.search(r'^/opt/vm_repository.+rw', line):
     nfsCredentials = True
     break
 
-if nfsExported == None:
-  out += red('\n\tseems nfs is not exported, check `sudo exportfs` and make sure /opt/vm_repository is exported as <world>')
-  err = False
+exportfs = commands.getoutput('exportfs')
+if re.search(r'^/opt/vm_repository', exportfs) == None:
+  out += red('\n\tseems nfs is not exported, check `exportfs` and make sure /opt/vm_repository is exported')
+  err = True
 if nfsCredentials == False:
   out += red('\n\tseems nfs is not in the exports file, make sure /etc/exports includes /opt/vm_repository and it has rw access')
-  err = False
+  err = True
 
 if err == False:
   out += green('OK')
@@ -129,11 +137,11 @@ out = 'checking Samba: '
 err = False
 
 status = commands.getoutput('service smb status')
-if re.search('nfsd running', status) == None:
+if re.search(r'smbd.*running', status) == None:
   out += red('\n\tSamba service is not running')
   err = True
 
-tmp = NamedTemporaryFile(delete = False)
+tmp = open(tempfile.mkstemp()[1],'w')
 try:
   smbConf = ''
   for line in open('/etc/samba/smb.conf'):
@@ -155,8 +163,8 @@ try:
     if config.has_option('vm_repository', 'guest ok') == False or config.get('vm_repository', 'guest ok') != 'yes':
       out += red('\n\tguest ok element into [vm_repository] should be `yes`')
       err = True
-    if config.has_option('global', 'security') == False or config.get('global', 'security') != 'shared':
-      out += red('\n\tsecurity element into [global] should be `shared`')
+    if config.has_option('global', 'security') == False or config.get('global', 'security') != 'share':
+      out += red('\n\tsecurity element into [global] should be `share`')
       err = True
 except ConfigParser.ParsingError,ex:
   err = True
@@ -167,7 +175,7 @@ except IOError,io:
   err = True
 os.unlink(tmp.name)
 if err == False:
-  out += gree('OK')
+  out += green('OK')
 print out
 
 #                        #
@@ -188,8 +196,8 @@ if err == False:
     out += red("\n\tVboxManage version must be 3.1.4 or avobe")
     err = True
 
-diskManager = commands.getoutput('v2v-diskmanager')
-if re.search(r'not found', diskManager) != None:
+diskManager = commands.getoutput('which v2v-diskmanager')
+if re.search(r'v2v-diskmanager$', diskManager) == None:
   out += red('\n\tv2v-diskmanager script is not installed')
   err = True
 
@@ -209,15 +217,15 @@ else:
       show = True
       err = True
 
-qemu = commands.getoutput('qemu-img --version')
-if re.search('not found', qemu) != None:
-  out += red('\n\tqemu-img: command not found')
-  err = True
-else:
-  version = re.search('qemu-img version (\d+)\.(\d+)\.(\d+)', qemu).groups()
-  if int(version[0]) == 0 and int(version[1]) < 10:
-    out += red("\n\tqemu-img version must be 0.10 or avove")
-    err = True
+#qemu = commands.getoutput('qemu-img --version')
+#if re.search('not found', qemu) != None:
+#  out += red('\n\tqemu-img: command not found')
+#  err = True
+#else:
+#  version = re.search('qemu-img version (\d+)\.(\d+)\.(\d+)', qemu).groups()
+#  if int(version[0]) == 0 and int(version[1]) < 10:
+#    out += red("\n\tqemu-img version must be 0.10 or avove")
+#    err = True
   
 if err == False:
   out += green('OK')
