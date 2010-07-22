@@ -1,5 +1,5 @@
 if ARGV.size < 1
-  puts 'Usage: java -jar jruby-complete-1.4.1.jar node_info_collector.rb NODE_IP_ADDRESS_1 NODE_IP_ADDRESS_2 ...'
+  puts "Usage: ./abiquoNodeInfoCollector.sh IP_ADDR_1 IP_ADDR_2 IP_ADD_3 ..."
   exit 1
 end
 
