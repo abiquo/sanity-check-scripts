@@ -68,19 +68,23 @@ nodes.each do |ip_address, node_info|
   puts "\n\t+ hypervisor:"
   puts "\t\t- name: #{node_info[:hypervisor ][:name]}"
   puts "\t\t- version: #{node_info[:hypervisor ][:version]}"
-  puts "\n\t+ virtual systems:"
-  node_info[:virtual_system].each do |vs|
-    puts "\t\t- uuid: #{vs[:uuid]}"
-    puts "\t\t- port: #{vs[:port]}"
-    puts "\t\t- status: #{vs[:status]}"
-    puts "\t\t- disks:"
-    vs[:disks].each do |disk|
-      puts "\t\t\t· hd: #{disk[:hd]}"
-      puts "\t\t\t· image path: #{disk[:image]}"
-      puts "\t\t\t· disk type: #{disk[:type]}"
-      puts "\t\t\t· disk format: #{disk[:format]}"
+  unless node_info[:virtual_system].empty?
+    puts "\n\t+ virtual systems:"
+    node_info[:virtual_system].each do |vs|
+      puts "\t\t- uuid: #{vs[:uuid]}"
+      puts "\t\t- port: #{vs[:port]}"
+      puts "\t\t- status: #{vs[:status]}"
+      unless vs[:disks].empty?
+        puts "\t\t- disks:"
+        vs[:disks].each do |disk|
+          puts "\t\t\t· hd: #{disk[:hd]}"
+          puts "\t\t\t· image path: #{disk[:image]}"
+          puts "\t\t\t· disk type: #{disk[:type]}"
+          puts "\t\t\t· disk format: #{disk[:format]}"
+          puts "\n"
+        end
+      end
       puts "\n"
     end
-    puts "\n"
   end
 end
