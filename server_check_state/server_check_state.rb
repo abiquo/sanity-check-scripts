@@ -1,4 +1,4 @@
-ABIQUO_SERVER_PATH = '/opt/abiquo-server'
+ABIQUO_SERVER_PATH = ENV['ABIQUO_HOME'] || '/opt/abiquo'
 TOMCAT_PATH = "#{ABIQUO_SERVER_PATH}/tomcat"
 
 @err = []

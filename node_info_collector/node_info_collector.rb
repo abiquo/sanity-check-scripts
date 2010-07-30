@@ -8,7 +8,8 @@ nodes = {}
 
 require 'java'
 
-TOMCAT = '/opt/abiquo-server/tomcat'
+ABIQUO_HOME = ENV['ABIQUO_HOME'] || '/opt/abiquo'
+TOMCAT = "#{ABIQUO_HOME}/tomcat"
 NODE_COLLECTOR = "#{TOMCAT}/webapps/nodecollector/WEB-INF"
 
 Dir.glob("#{TOMCAT}/lib/*jar").each { |jar| require jar }
