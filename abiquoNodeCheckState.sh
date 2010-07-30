@@ -137,7 +137,7 @@ if [[ $# -gt 0 ]]; then
         check_file /usr/bin/qemu-kvm "loader"
     elif [[ "${1}" == "xen" ]]; then
         echo "Checking XEN configuration..."
-        check_vagent "${AIM_CONF}" "xen:///"
+        check_vagent "${AIM_CONF}" "xen+unix:///"
 	check_file /usr/lib64/xen/bin/qemu-dm "emulator"
 	check_file /usr/lib/xen/boot/hvmloader "loader"
     fi
