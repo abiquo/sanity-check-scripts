@@ -61,7 +61,7 @@ def check_database(file)
 
   io = File.read(file)
   username, password = %r{username="([^"]+)"\s+password="([^"]*)}.match(io)[1, 2]
-  host, port, schema = %r{url="[^:]+:[^:]+://([^:]+)(?::([^/]+))?/(.+)(\?.+)?"}.match(io)[1..3]
+  host, port, schema = %r{url="[^:]+:[^:]+://([^:]+)(?::([^/]+))?/([^?]+)(\?.+)?"}.match(io)[1..3]
   port ||= '3306'
 
   return unless check_service('Mysql')
