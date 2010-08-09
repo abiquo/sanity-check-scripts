@@ -5,6 +5,7 @@ TOMCAT_PATH = "#{ABIQUO_SERVER_PATH}/tomcat"
 
 def green(message); "\033[1;32m#{message}\033[0m"; end
 def red(message); "\033[1;31m#{message}\033[0m"; end
+def yellow(message); "\033[1;33m#{message}\033[0m"; end
 
 def print_check
   if @err.empty? 
@@ -15,9 +16,10 @@ def print_check
   @err = []
 end
 
-def check_service(name, command = name.downcase)
+def check_service(name, command = name.downcase, error = true)
   status = `service #{command} status 2> /dev/null` rescue @err << red("\t#{$!.message}")
-  @err << red("\t#{name} is not running") unless status.nil? || status =~ /running/
+  error_message = error ? 'red' : 'yellow'
+  @err << send(error_message, "\t#{name} is not running") unless status.nil? || status =~ /running/
 end
 
 def tomcat_file(file); file % TOMCAT_PATH; end
@@ -51,6 +53,7 @@ def check_jndi(file, replacement, regex)
   file
 rescue
   @err << red("File not found: #{ARGF.filename}. #{$!.message}")
+  ARGF.filename
 end
 
 def check_database(file)
@@ -64,7 +67,7 @@ def check_database(file)
   host, port, schema = %r{url="[^:]+:[^:]+://([^:]+)(?::([^/]+))?/([^?]+)(\?.+)?"}.match(io)[1..3]
   port ||= '3306'
 
-  return unless check_service('Mysql')
+  return unless check_service('Mysql', 'mysqld')
 
   password = "-p#{password}" unless password.empty?
   db_status = `mysql -u#{username} #{password} -h#{host} -P#{port} -e "use #{schema}"`
@@ -96,7 +99,7 @@ end
 #           #
 
 validate 'Checking NFS: ' do
-  unless check_service('NFS', 'nfsd')
+  unless check_service('NFS', 'nfsd', false)
     unless File.read('/etc/exports') =~ %r{/opt/vm_repository.+rw}
       @err << red("\tseems nfs is not in the exports file, make sure /etc/exports includes /opt/vm_repository and it has rw access")
     end
@@ -108,7 +111,7 @@ validate 'Checking NFS: ' do
 end
 
 validate 'Checking Samba: ' do
-  unless check_service('Samba', 'smbd')
+  unless check_service('Samba', 'smbd', false)
     require File.expand_path('config_parser', file.dirname(__FILE__))
   
     parser = ConfigParser.new('/etc/samba/smb.conf')
@@ -139,7 +142,7 @@ end
 #                                 #
 
 validate 'Checking Bpm external dependencies: ' do
-  vbox_manage = `VBoxManage -v` rescue @err << red("\tVBoxManage is not installed")
+  vbox_manage = `VBoxManage -v` rescue @err << yellow("\tVBoxManage is not installed")
 
   unless vbox_manage.empty?
     match = %r{(d+)\.(d+)\.(d+)}.match(vbox_manage)
@@ -154,11 +157,11 @@ validate 'Checking Bpm external dependencies: ' do
   end
 
   unless `which v2v-diskmanager` =~ /v2v-diskmanager$/
-    @err << "\tv2v-diskmanager script is not installed"
+    @err << red("\tv2v-diskmanager script is not installed")
   end
 
   unless `which mechadora` =~ /mechadora$/
-    @err << "\tmechadora script is not installed"
+    @err << red("\tmechadora script is not installed")
   else
     show = false
     `mechadora`.split("\n").each do |line|
@@ -189,7 +192,7 @@ end
 #                   #
 
 validate 'Checking DHCP: ' do
-  unless check_service('DHCP', 'dhcpd')
+  unless check_service('DHCP', 'dhcpd', false)
     begin
       unless File.read('/etc/dhcpd.conf') =~ /omapi-port\s+7911/
         @err << red("\tOmapi port is not configured in `/etc/dhcpd.conf`. Check this file contains `omapi-port 7911`")
