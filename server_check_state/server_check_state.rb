@@ -145,10 +145,7 @@ validate 'Checking Bpm external dependencies: ' do
   vbox_manage = `VBoxManage -v` rescue @err << yellow("\tVBoxManage is not installed")
 
   unless vbox_manage.empty?
-    match = %r{(d+)\.(d+)\.(d+)}.match(vbox_manage)
-    unless match
-      @err << red("\tVBoxManage is not properly configured, the kernel module is not loaded")
-    else
+    if match = %r{(d+)\.(d+)\.(d+)}.match(vbox_manage)
       major, minor, patch = [1..3].map {|v| v.to_i}
       if major < 3 || (major == 3 && minor < 1) || (major == 3 && minor == 1 && patch < 4)
         @err << red("\tVboxManage version must be 3.1.4 or avobe")
