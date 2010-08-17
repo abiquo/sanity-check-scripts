@@ -16,7 +16,7 @@ Dir.glob("#{TOMCAT}/lib/*jar").each { |jar| require jar }
 Dir.glob("#{NODE_COLLECTOR}/lib/*.jar").each { |jar| require jar }
 JRuby.runtime.jruby_class_loader.addURL(java.io.File.new("#{NODE_COLLECTOR}/classes").to_url)
 
-import org.springframework.context.support.ClassPathXmlApplicationContext
+import org.springframework.context.support.ClassPathXmlApplicationContext rescue(NameError); puts "can't load the spring classes. Make sure the Abiquo home is #{ABIQUO_HOME} or set your own"; exit; 
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -36,9 +36,9 @@ ip_addresses.each do |ip_address|
   virtual_system_resource.ip_address = ip_address
   host_resource.ip_address = ip_address
 
-  host_info = host_resource.host_info
-  node_info[:hypervisor][:name] = host_info.hypervisor.name
-  node_info[:hypervisor][:version] = host_info.version
+	host_info = host_resource.host_info
+	node_info[:hypervisor][:name] = host_info.hypervisor.name
+	node_info[:hypervisor][:version] = host_info.version
 
   virtual_system_resource.list_virtual_systems.vs.each do |vs|
     vs_info = {
