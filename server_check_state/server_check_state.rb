@@ -17,9 +17,15 @@ def print_check
 end
 
 def check_service(name, command = name.downcase, error = true)
-  status = `service #{command} status 2> /dev/null` rescue @err << red("\t#{$!.message}")
-  error_message = error ? 'red' : 'yellow'
-  @err << send(error_message, "\t#{name} is not running") unless status.nil? || status =~ /running/
+  commands = Array[command]
+	status = commands.each do |command|
+		status = `service #{command} status 2> /dev/null` rescue @err << red("\t#{$!.message}")
+		break true if status && status =~ /running/
+	end
+
+	error_message = error ? 'red' : 'yellow'
+	@err << send(error_message, "\t#{name} is not running") unless status
+	!status
 end
 
 def tomcat_file(file); file % TOMCAT_PATH; end
@@ -99,7 +105,7 @@ end
 #           #
 
 validate 'Checking NFS: ' do
-  unless check_service('NFS', 'nfsd', false)
+  unless check_service('NFS', %w{nfs nfsd}, false)
     unless File.read('/etc/exports') =~ %r{/opt/vm_repository.+rw}
       @err << red("\tseems nfs is not in the exports file, make sure /etc/exports includes /opt/vm_repository and it has rw access")
     end
@@ -111,8 +117,8 @@ validate 'Checking NFS: ' do
 end
 
 validate 'Checking Samba: ' do
-  unless check_service('Samba', 'smbd', false)
-    require File.expand_path('config_parser', file.dirname(__FILE__))
+  unless check_service('Samba', %w{smb smbd}, false)
+    require File.expand_path('config_parser', File.dirname(__FILE__))
   
     parser = ConfigParser.new('/etc/samba/smb.conf')
     begin
