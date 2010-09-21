@@ -1,10 +1,31 @@
 #!/bin/bash
 
+#
+# Abiquo community edition
+# cloud management application for hybrid clouds
+# Copyright (C) 2008-2010 - Abiquo Holdings S.L.
+# 
+# This application is free software; you can redistribute it and/or
+# modify it under the terms of the GNU LESSER GENERAL PUBLIC
+# LICENSE as published by the Free Software Foundation under
+# version 3 of the License
+# 
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# LESSER GENERAL PUBLIC LICENSE v.3 for more details.
+# 
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+#
+
 ############################
 ### Script Configuration ###
 ############################
 
-AIM_CONF=/etc/openwsman/openwsman.conf
+AIM_CONF=/etc/abiquo-aim.ini
 
 ################################
 ### End script configuration ###
@@ -12,12 +33,28 @@ AIM_CONF=/etc/openwsman/openwsman.conf
 
 LANG="C"
 
+function load_section() {
+    eval `sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
+        -e 's/;.*$//' \
+        -e 's/[[:space:]]*$//' \
+        -e 's/^[[:space:]]*//' \
+        -e "s/^\(.*\)=\([^\"']*\)$/\1=\"\2\"/" \
+    < ${1} \
+    | sed -n -e "/^\[${2}\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
+}
+
+function load_config() {
+    load_section ${AIM_CONF} "monitor"
+    load_section ${AIM_CONF} "rimp"
+    load_section ${AIM_CONF} "vlan"
+}
+
 function check_proc() {
     echo -ne "Checking ${1}...\t"
     PID=`ps -e | grep ${1} | awk '{print $1}'`
     if [[ -n ${PID} ]]; then
 	echo -n "OK (pid ${PID}, "
-        PORT=`netstat -putan 2>/dev/null | grep ${1} | grep "LISTEN" | awk '{print $4}' | cut -d: -f2`
+        PORT=`netstat -putln 2>/dev/null | grep "${1}" | head -n 1 | awk '{print $4}' | rev | cut -d: -f1 | rev`
         if [[ -n ${PORT} ]]; then
 	    echo "listening at ${PORT})"
         else
@@ -28,31 +65,6 @@ function check_proc() {
     fi
 }
 
-function check_aim() {
-    echo -ne "Checking AIM...\t"
-
-    if ! [[ -f ${1} ]]; then
-        echo "MISSING CONFIG" 
-    else
-        echo -ne "\n  Remote repository...\t\t"
-        REMOTE_REPO=`grep "remoteRepository" ${1} | awk -F= '{print $2}' | tr -d " "`
-        MOUNT=`mount | grep ${REMOTE_REPO}`
-        if [[ -n ${MOUNT} ]]; then
-            echo "OK (at ${REMOTE_REPO})"
-        else
-            echo "MISSING"
-        fi
-
-        echo -ne "  Destination repository...\t"
-        DEST_REPO=`grep "destinationRepository" ${1} | awk -F= '{print $2}' | tr -d " "`
-        if [[ -d ${DEST_REPO} ]]; then
-            echo "OK (at ${DEST_REPO})"
-        else
-	    echo "MISSING"
-	fi
-    fi
-}
-
 function check_file() {
     echo -ne "  Checking ${2}...\t"
     if [[ -e ${1} ]]; then
@@ -60,24 +72,6 @@ function check_file() {
     else
         echo "MISSING"
     fi
-}
-
-function check_vagent() {
-    echo -ne "  Checking vagent...\t"
-    if [[ -f ${1} ]]; then
-        LIBVIRT_URI=`grep -v ^# ${1} | grep "libvirt_uri" | awk -F= '{print $2}' | tr -d " "`
-        if [[ -n ${LIBVIRT_URI} ]]; then
-            if [[ "${LIBVIRT_URI}" == ${2} ]]; then
-                echo "OK (libvirt_uri = ${2})"
-            else
-                echo "ERROR (libvirt_uri should be ${2})"
-            fi
-        else
-            echo "MISSING"
-        fi
-    else
-        echo "MISSING"
-   fi 
 }
 
 function check_firewall() {
@@ -107,39 +101,72 @@ function check_firewall() {
     fi
 }
 
-function check_bridge() {
-    echo -ne "Checking bridge...\t"
-    HASBRIDGE=`brctl show | grep ^${1}`
-    if [[ -n ${HASBRIDGE} ]]; then
-        echo -n "OK (${1} "
-        IFACE=`find /sys/class/net/${1}/brif -iname "*eth*" -exec basename {} \;`
-        if [[ -n ${IFACE} ]]; then
-            echo "attached to ${IFACE})"
+function check_rimp() {
+    echo "  Checking rimp..."
+
+    echo -ne "    Checking repository...\t"
+    if [[ -d ${repository} ]]; then
+        if [[ -f ${repository}/.abiquo_repository ]]; then
+            echo "OK (at ${repository})"
         else
-            echo "not attached to an interface)"
+            echo "MISSING (${repository}/.abiquo_repository not found)"
+        fi
+    else
+        echo "MISSING"
+    fi
+
+    echo -ne "    Checking datastore...\t"
+    if [[ -d ${datastore} ]]; then
+        echo "OK (at ${datastore})"
+    else
+        echo "MISSING"
+    fi
+}
+
+function check_monitor() {
+    echo -ne "  Checking monitor...\t"
+
+    if [[ -n ${uri} ]]; then
+        if [[ "${uri}" == "${1}" ]]; then
+            echo "OK (uri = ${1})"
+        else
+            echo "ERROR (uri should be ${1})"
         fi
     else
         echo "MISSING"
     fi
 }
 
-check_proc "openwsmand"
-check_proc "libvirtd"
-check_bridge "br0"
-check_firewall
-check_aim "${AIM_CONF}"
+function check_vlan() {
+    echo "  Checking vlan..."
+    echo -n "  " && check_file ${ifconfigCmd} "ifconfigCmd"
+    echo -n "  " && check_file ${vconfigCmd} "vconfigCmd"
+    echo -n "  " && check_file ${brctlCmd} "brctlCmd"
+}
 
-if [[ $# -gt 0 ]]; then
-    if [[ "${1}" == "kvm" ]]; then
-        echo "Checking KVM configuration..."
-        check_vagent "${AIM_CONF}" "qemu+unix:///system"
-        check_file /usr/bin/qemu-kvm "emulator"
-        check_file /usr/bin/qemu-kvm "loader"
-    elif [[ "${1}" == "xen" ]]; then
-        echo "Checking XEN configuration..."
-        check_vagent "${AIM_CONF}" "xen+unix:///"
-	check_file /usr/lib64/xen/bin/qemu-dm "emulator"
-	check_file /usr/lib/xen/boot/hvmloader "loader"
+function check_aim() {
+    echo "Checking AIM..."
+    load_config
+
+    echo -n "  "
+    check_proc "abiquo-aim"
+    check_rimp
+
+    if [[ $# -gt 0 ]]; then
+        if [[ "${1}" == "kvm" ]]; then
+            check_monitor "qemu+unix:///system"
+            check_file /usr/bin/qemu-kvm "emulator"
+            check_file /usr/bin/qemu-kvm "loader"
+        elif [[ "${1}" == "xen" ]]; then
+            check_monitor "xen+unix:///"
+            check_file /usr/lib64/xen/bin/qemu-dm "emulator"
+            check_file /usr/lib/xen/boot/hvmloader "loader"
+        fi
     fi
-fi
 
+    check_vlan
+}
+
+check_proc "libvirtd"
+check_firewall
+check_aim $*
