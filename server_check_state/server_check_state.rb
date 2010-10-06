@@ -1,3 +1,5 @@
+require 'open-uri'
+
 ABIQUO_SERVER_PATH = ENV['ABIQUO_HOME'] || '/opt/abiquo'
 TOMCAT_PATH = "#{ABIQUO_SERVER_PATH}/tomcat"
 
@@ -224,10 +226,16 @@ validate 'checking Event sync address: ' do
     addr = %r{<(eventSinkAddress)>http://([^:/]+).*</\1>}
     if addr == 'localhost'
       @err << red("\tEvent sync address can not be `localhost`")
-    else
-      if `ifconfig | grep "inet addr:"`.split("\n").map {|line| line == "addr:#{addr}"}.empty?
-        @err << red("\tEvent sync address not found. Ensure `#{addr}` is configured as a host address.")
-      end
+    elsif `ifconfig | grep "inet addr:"`.split("\n").map {|line| line == "addr:#{addr}"}.empty?
+      @err << red("\tEvent sync address not found. Ensure `#{addr}` is configured as a host address.")
+		else
+			begin
+				open(addr)
+			rescue
+				if $!.is_a?(Errno::ECONNREFUSED) || $!.is_a?(Errno::ENOENT)
+					@err << red("\tEvent sync address connection refused: #{addr}. Ensure the address is right and the server is up.")
+				end
+			end
     end
   rescue
     @err << red("\tFile not found: #{ARGF.filename}. #{$!.message}")
