@@ -82,21 +82,14 @@ def check_database(file)
   @err << ref("\t#{db_status}") unless db_status.empty?
 end
 
-bpm_file = nil
 server_file = nil
 validate 'checking JNDI: ' do
-  bpm_file = check_jndi tomcat_file('%s/conf/Catalina/localhost/bpm-async.xml'), tomcat_file('%s/webapps/bpm-async/META-INF/context.xml'), 'jdbc/abiquoBpmDB'
   server_file = check_jndi tomcat_file('%s/conf/Catalina/localhost/server.xml'), tomcat_file('%s/webapps/server/META-INF/context.xml'), 'jdbc/abiquoDB'
 end
 
 #                                           #
 # check database connection and credentials #
 #                                           #
-
-
-validate 'Checking Bpm database credentials: ' do
-  check_database(bpm_file)
-end
 
 validate 'Checking Server database credentials: ' do
   check_database(server_file)
