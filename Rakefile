@@ -7,5 +7,22 @@ task :release do
   sh "git push --tags"
 end
 
+task :build_srpm do
+  rpmver = ""
+  File.readlines("abiquo-server-tools.spec").each do |l|
+    if l =~ /Version:/
+      rpmver = l.split(":").last.strip
+    end
+  end
+  if not File.directory?("#{ENV['HOME']}/rpmbuild")
+    $stderr.puts "~/rpmbuild dir not found. Use rpmdev-setuptree."
+    exit
+  end
+  `mkdir ~/rpmbuild/SOURCES/abiquo-server-tools-#{rpmver}`
+  `cp -r * ~/rpmbuild/SOURCES/abiquo-server-tools-#{rpmver}`
+  `tar -C ~/rpmbuild/SOURCES/ -czf ~/rpmbuild/SOURCES/abiquo-server-tools-#{rpmver}.tar.gz abiquo-server-tools-#{rpmver}`
+  `rpmbuild -bs abiquo-server-tools.spec`
+end
+
 
 task :default => :release
