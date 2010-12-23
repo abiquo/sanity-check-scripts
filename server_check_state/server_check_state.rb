@@ -1,7 +1,13 @@
 require 'open-uri'
+require 'java'
+java_import java.io.FileInputStream
+java_import java.util.Properties
 
 ABIQUO_SERVER_PATH = ENV['ABIQUO_HOME'] || '/opt/abiquo'
+CONFIG_PATH = "#{ABIQUO_SERVER_PATH}/config"
 TOMCAT_PATH = "#{ABIQUO_SERVER_PATH}/tomcat"
+
+ABIQUO_CONFIG = "#{CONFIG_PATH}/abiquo.properties"
 
 @err = []
 
@@ -10,9 +16,9 @@ def red(message); "\033[1;31m#{message}\033[0m"; end
 def yellow(message); "\033[1;33m#{message}\033[0m"; end
 
 def print_check
-  if @err.empty? 
+  if @err.empty?
     print green("OK\n")
-  else 
+  else
     puts "\n" << @err.join("\n")
   end
   @err = []
@@ -20,14 +26,14 @@ end
 
 def check_service(name, command = name.downcase, error = true)
   commands = Array[command]
-	status = commands.each do |command|
-		status = `service #{command} status 2> /dev/null` rescue @err << red("\t#{$!.message}")
-		break true if status && status =~ /running/
-	end
+  status = commands.each do |command|
+    status = `service #{command} status 2> /dev/null` rescue @err << red("\t#{$!.message}")
+    break true if status && status =~ /running/
+  end
 
-	error_message = error ? 'red' : 'yellow'
-	@err << send(error_message, "\t#{name} is not running") unless status
-	!status
+  error_message = error ? 'red' : 'yellow'
+  @err << send(error_message, "\t#{name} is not running") unless status
+  !status
 end
 
 def tomcat_file(file); file % TOMCAT_PATH; end
@@ -114,7 +120,7 @@ end
 validate 'Checking Samba: ' do
   unless check_service('Samba', %w{smb smbd}, false)
     require File.expand_path('config_parser', File.dirname(__FILE__))
-  
+
     parser = ConfigParser.new('/etc/samba/smb.conf')
     begin
       parser.import_config
@@ -215,18 +221,24 @@ end
 
 validate 'checking Event sync address: ' do
   begin
-    server_config = File.read(tomcat_file('%s/webapps/server/WEB-INF/classes/conf/config.xml'))
-    addr = %r{<(eventSinkAddress)>http://([^:/]+).*</\1>}
-    if addr == 'localhost'
-      @err << red("\tEvent sync address can not be `localhost`")
-    elsif `ifconfig | grep "inet addr:"`.split("\n").map {|line| line == "addr:#{addr}"}.empty?
-      @err << red("\tEvent sync address not found. Ensure `#{addr}` is configured as a host address.")
-		else
-      begin
-        open(addr)
-      rescue
-        if $!.is_a?(Errno::ECONNREFUSED) || $!.is_a?(Errno::ENOENT)
-          @err << red("\tEvent sync address connection refused: #{addr}. Ensure the address is right and the server is up.")
+    properties = Properties.new
+    properties.load(FileInputStream.new(java.io.File.new(ABIQUO_CONFIG)))
+    event_sync = properties.get_property('abiquo.server.eventSinkAddress')
+    if event_sync.nil? || event_sync.empty?
+      @err << yellow("\tDefault event sync address used, usually `http://localhost/server/EventSink`")
+    else
+      addr = event_sync.gsub(%r{http://([^:/]+).*}, '\1')
+      if addr == 'localhost'
+        @err << red("\tEvent sync address can not be `localhost`")
+      elsif `ifconfig | grep "inet addr:"`.split("\n").map {|line| line == "addr:#{addr}"}.empty?
+        @err << red("\tEvent sync address not found. Ensure `#{addr}` is configured as a host address.")
+      else
+        begin
+          open(addr)
+        rescue
+          if $!.is_a?(Errno::ECONNREFUSED) || $!.is_a?(Errno::ENOENT)
+            @err << red("\tEvent sync address connection refused: #{addr}. Ensure the address is right and the server is up.")
+          end
         end
       end
     end
