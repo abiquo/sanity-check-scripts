@@ -1,13 +1,9 @@
 require 'open-uri'
 require 'java'
-java_import java.io.FileInputStream
-java_import java.util.Properties
 
 ABIQUO_SERVER_PATH = ENV['ABIQUO_HOME'] || '/opt/abiquo'
 CONFIG_PATH = "#{ABIQUO_SERVER_PATH}/config"
 TOMCAT_PATH = "#{ABIQUO_SERVER_PATH}/tomcat"
-
-ABIQUO_CONFIG = "#{CONFIG_PATH}/abiquo.properties"
 
 @err = []
 
@@ -213,36 +209,4 @@ end
 
 validate 'Checking SELinux: ' do
   @err << red("\tSELinux is ENABLED. It must be DISABLED") unless `ls -A /selinux`.empty?
-end
-
-#                          #
-# check event sync address #
-#                          #
-
-validate 'checking Event sync address: ' do
-  begin
-    properties = Properties.new
-    properties.load(FileInputStream.new(java.io.File.new(ABIQUO_CONFIG)))
-    event_sync = properties.get_property('abiquo.server.eventSinkAddress')
-    if event_sync.nil? || event_sync.empty?
-      @err << yellow("\tDefault event sync address used, usually `http://localhost/server/EventSink`")
-    else
-      addr = event_sync.gsub(%r{http://([^:/]+).*}, '\1')
-      if addr == 'localhost'
-        @err << red("\tEvent sync address can not be `localhost`")
-      elsif `ifconfig | grep "inet addr:"`.split("\n").map {|line| line == "addr:#{addr}"}.empty?
-        @err << red("\tEvent sync address not found. Ensure `#{addr}` is configured as a host address.")
-      else
-        begin
-          open(addr)
-        rescue
-          if $!.is_a?(Errno::ECONNREFUSED) || $!.is_a?(Errno::ENOENT)
-            @err << red("\tEvent sync address connection refused: #{addr}. Ensure the address is right and the server is up.")
-          end
-        end
-      end
-    end
-  rescue
-    @err << red("\tFile not found: #{ARGF.filename}. #{$!.message}")
-  end
 end
