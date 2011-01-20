@@ -2,24 +2,26 @@
 
 
 RESET = "\033[0m"
-BOLD = "\033[1;33m"
 GREEN = "\033[1;32m"
 RED = "\033[1;31m"
+YELLOW = "\033[1;33m"
 
-def bold(text):
-    print BOLD + text + RESET
-
-def test(condition):
+def test(label, condition):
     if condition:
-        ok()
+        success(label)
     else:
-        fail()
+        fail(label)
 
-def ok():
-    __result(GREEN + "OK" + RESET)
+def title(label):
+    print YELLOW + label + RESET
 
-def fail():
-    __result(RED + "MISSING" + RESET)
+def success(label):
+    print_result(label, GREEN + "OK" + RESET)
 
-def __result(text):
-    print "\t\t\t[  " + text + "  ]"
+def fail(label):
+    print_result(label, RED + "MISSING" + RESET)
+
+def print_result(label, result):
+    print label,
+    print "[  %s  ]".rjust(70 - len(label)) % result
+
