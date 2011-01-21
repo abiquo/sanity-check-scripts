@@ -4,24 +4,25 @@ Utility scripts to check the status of the machine where Abiquo is installed.
 
 === Abiquo server check state
 
-  checks the configuration of the machine where the server is installed:
+  Checks the configuration of the machine where the server is installed:
 
     $ ./abiquoServerCheckState.sh
 
 === Abiquo node info collector
 
-  checks the configuration of the nodes that will be managed by Abiquo. 
+  Checks the configuration of the nodes that will be managed by Abiquo. 
   Uses the same code that the application and it must be ran from the server machine:
 
     $ ./abiquoNodeInfoCollector.sh IP_ADD_1 IP_ADD_2 IP_ADD_3 ...
 
 === Abiquo node check state
 
-  checks the state of the nodes that will be managed by Abiquo. It must be ran in the node itself:
+  Checks the state of the nodes that will be managed by Abiquo. It must be ran in the node itself:
 
-    $ ./abiquoNodeCheckState.sh
+    $ ./abiquoNodeCheckState.py
 
 The Abiquo's default installation directory is /opt/abiquo but this setting can be overrided
 exporting the system variable ABIQUO_HOME, i.e:
 
     $ ABIQUO_HOME=/usr/local/abiquo ./abiquoServerCheckState.sh
+
