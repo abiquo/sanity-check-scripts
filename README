@@ -17,7 +17,8 @@ Utility scripts to check the status of the machine where Abiquo is installed.
 
 === Abiquo node check state
 
-  Checks the state of the nodes that will be managed by Abiquo. It must be ran in the node itself:
+  Checks the state of the nodes that will be managed by the Abiquo AIM.
+  It must be ran in the node itself:
 
     $ ./abiquoNodeCheckState.py
 
