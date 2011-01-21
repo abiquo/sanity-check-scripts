@@ -6,20 +6,20 @@ GREEN = "\033[1;32m"
 RED = "\033[1;31m"
 YELLOW = "\033[1;33m"
 
-def test(label, condition):
+def test(label, condition, ok_msg = "OK", fail_msg = "MISSING"):
     if condition:
-        success(label)
+        success(label, ok_msg)
     else:
-        fail(label)
+        fail(label, fail_msg)
 
 def title(label):
     print YELLOW + label + RESET
 
-def success(label):
-    print_result(label, GREEN + "OK" + RESET)
+def success(label, result):
+    print_result(label, GREEN + result + RESET)
 
-def fail(label):
-    print_result(label, RED + "MISSING" + RESET)
+def fail(label, result):
+    print_result(label, RED + result + RESET)
 
 def print_result(label, result):
     print label,
