@@ -32,7 +32,7 @@ RED = "\033[1;31m"
 YELLOW = "\033[1;33m"
 
 
-def test(label, condition, ok_msg = "OK", fail_msg = "MISSING", warn = False):
+def test(label, condition, ok_msg="OK", fail_msg="MISSING", warn=False):
     """Tests the condition and print the result"""
     if condition:
         success(label, ok_msg)

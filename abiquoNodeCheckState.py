@@ -25,10 +25,14 @@ __license__ = "MIT http://www.opensource.org/licenses/mit-license.php"
 __author__ = "Ignasi Barrera (ignasi.barrera@abiquo.com)"
 __version__ = "0.1"
 
+
 import commands
-import ConfigParser
 import os
+
+import ConfigParser
+
 from node_check_state.output import *
+
 
 # AIM configuration file
 AIM_CONFIG = '/etc/abiquo-aim.ini'
@@ -60,7 +64,7 @@ def check_process(name):
     """Checks if the given process is running"""
     label = 'Checking "%s" process ...' % name
     res = commands.getstatusoutput('ps -e | grep ' + name)
-    test(label, not res[0], fail_msg = 'STOPPED')
+    test(label, not res[0], fail_msg='STOPPED')
 
 
 # Check functions
@@ -89,7 +93,7 @@ def check_libvirt(config):
     label = 'Connecting to %s ...' % uri
     cmd = 'virsh -c %s exit' % uri
     res = commands.getstatusoutput(cmd)
-    test(label, not res[0], fail_msg = 'ERROR')
+    test(label, not res[0], fail_msg='ERROR')
 
     print
 
@@ -115,17 +119,17 @@ def check_firewall():
     runlevel = commands.getoutput('runlevel').split()[1]
     activation = commands.getoutput('chkconfig --list iptables')
     active = activation.find(runlevel + ':off') >= 0
-    test(label, active, fail_msg = "ENABLED", warn = True)
+    test(label, active, fail_msg="ENABLED", warn=True)
 
     # Check if there are active rules
     label = 'Checking that there are no active firewall rules ...'
     rules = commands.getstatusoutput('iptables -nL | grep - "--"')
-    test(label, rules[0], fail_msg = 'RULES FOUND', warn = True)
+    test(label, rules[0], fail_msg='RULES FOUND', warn=True)
 
     # Check SELinux status
     label = 'Checking if SELinux is disabled ...'
     selinux = os.listdir('/selinux')
-    test(label, not selinux, fail_msg = 'ENABLED', warn = True)
+    test(label, not selinux, fail_msg='ENABLED', warn = True)
 
     print
 
