@@ -35,7 +35,6 @@ if File.exist? SERVER_CONFIG
   custom_properties["abiquo.server.timeout"] = xml.xpath("./timeout")
   custom_properties["abiquo.server.sessionTimeout"] = xml.xpath('./sessionTimeout')
   custom_properties["abiquo.server.virtualCpuPerCore"] = xml.xpath('./virtualCpuForCore')
-  custom_properties['abiquo.server.eventSinkAddress'] = xml.xpath('./eventSinkAddress')
   custom_properties['abiquo.server.api.location'] = xml.xpath('./apiLocation')
   custom_properties['abiquo.server.remoteSpace.default'] = xml.xpath('./repositorySpace')
   custom_properties['abiquo.server.mail.server'] = xml.xpath('./mail/server')
@@ -93,7 +92,6 @@ most_used = %w{
 abiquo.server.sessionTimeout
 abiquo.server.virtualCpuPerCore
 abiquo.server.mail.server
-abiquo.server.eventSinkAddress
 abiquo.appliancemanager.localRepositoryPath
 abiquo.appliancemanager.repositoryLocation
 abiquo.virtualfactory.hyperv.destinationRepositoryPath
