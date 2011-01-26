@@ -2,7 +2,7 @@
 
 Name:     abiquo-server-tools
 Version: 1.7
-Release: 2%{?dist}%{?buildstamp}
+Release: 3%{?dist}%{?buildstamp}
 Summary:  Abiquo Server Tools
 Group:    Development/System 
 License:  Multiple 
@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/abiquo17-update-config
 
 %changelog
+* Wed Jan 26 2011 Sergio Rubio <srubio@abiquo.com> - 1.7-3
+- upstream update
+
 * Wed Jan 26 2011 Sergio Rubio <srubio@abiquo.com> - 1.7-2
 - include abiquo17-update-config script
 
