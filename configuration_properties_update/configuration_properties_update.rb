@@ -6,7 +6,7 @@ ABIQUO_HOME = ENV['ABIQUO_HOME'] || '/opt/abiquo'
 TOMCAT_HOME = ENV['CATALINA_HOME'] || "#{ABIQUO_HOME}/tomcat"
 ABIQUO_TOMCAT_CONFIG = "file:/#{TOMCAT_HOME}/lib/abiquo-tomcat.jar!/abiquo.properties"
 
-CONFIG_HOME = "#{ABIQUO_HOME}/config"
+CONFIG_HOME = ENV['ABIQUO_CONFIG_HOME'] || "#{ABIQUO_HOME}/config"
 ABIQUO_PROPERTIES = "#{CONFIG_HOME}/abiquo.properties"
 SERVER_CONFIG = "#{CONFIG_HOME}/server.xml"
 AM_CONFIG = "#{CONFIG_HOME}/am.xml"
