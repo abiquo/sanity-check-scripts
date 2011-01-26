@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/opt/abiquo/tools/abiquoConfigurationUpdate17.sh $@
