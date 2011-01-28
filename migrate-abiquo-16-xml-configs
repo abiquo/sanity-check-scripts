@@ -1,0 +1,139 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'iniparse'
+require 'uri'
+require 'fileutils'
+require 'rexml/document'
+require 'rexml/xpath'
+include REXML
+
+ABIQUO_HOME = ENV['ABIQUO_HOME'] || '/opt/abiquo'
+TOMCAT_HOME = ENV['CATALINA_HOME'] || "#{ABIQUO_HOME}/tomcat"
+
+CONFIG_HOME = ENV['ABIQUO_CONFIG_HOME'] || "#{ABIQUO_HOME}/config"
+ABIQUO_PROPERTIES = ENV['ABIQUO_PROPERTIES'] || "#{CONFIG_HOME}/abiquo.properties"
+SERVER_CONFIG = "#{CONFIG_HOME}/server.xml"
+AM_CONFIG = "#{CONFIG_HOME}/am.xml"
+VIRTUAL_FACTORY_CONFIG = "#{CONFIG_HOME}/virtualfactory.xml"
+
+class REXML::Element
+  def xpath(path)
+    (elem = XPath.first(self, path) and elem.text)
+  end
+
+  def attr(path)
+    (elem = XPath.first(self, path) and elem.value)
+  end
+end
+
+def rpm_installed?(name)
+  `rpm -q #{name}`
+  $? == 0
+end
+
+def server_property?(name)
+  name =~ /abiquo\.(rabbitmq|server)/
+end
+
+def rs_property?(name)
+  name =~ /abiquo\.(rabbitmq|redis|virtualfactory|appliancemanager|nodecollector|vsm)/
+end
+
+puts 'Starting configuration migration'
+
+default_properties = {
+  'abiquo.server.sessionTimeout' => '60',
+  'abiquo.server.mail.server' => '127.0.0.1',
+  'abiquo.server.mail.user' => 'none@none.es',
+  'abiquo.server.mail.password' => 'none',
+  'abiquo.rabbitmq.username' => 'guest',
+  'abiquo.rabbitmq.password' => 'guest',
+  'abiquo.rabbitmq.host' => '127.0.0.1',
+  'abiquo.rabbitmq.port' => '5672',
+  'abiquo.appliancemanager.repositoryLocation' => '127.0.0.1:/opt/vm_repository/',
+  'abiquo.appliancemanager.localRepositoryPath' => '/opt/vm_repository/',
+  'abiquo.virtualfactory.hyperv.repositoryLocation' => '//127.0.0.1/vm_repository/',
+  'abiquo.virtualfactory.xenserver.repositoryLocation' => '127.0.0.1:/opt/vm_repository/',
+  'abiquo.virtualfactory.storagelink.address' => 'https://127.0.0.1:21605',
+  'abiquo.virtualfactory.storagelink.user' => 'admin',
+  'abiquo.virtualfactory.storagelink.password' => 'storagelink',
+  'abiquo.redis.host' => '127.0.0.1',
+  'abiquo.redis.port' => '6379'
+}
+
+########################
+# server configuration #
+########################
+if File.exist? SERVER_CONFIG
+  puts '-- server.xml found reading its configuration properties'
+
+  xml = Document.new(File.open(SERVER_CONFIG)).root
+  default_properties["abiquo.server.timeout"] = xml.xpath("./timeout")
+  default_properties["abiquo.server.sessionTimeout"] = xml.xpath('./sessionTimeout')
+  default_properties["abiquo.server.virtualCpuPerCore"] = xml.xpath('./virtualCpuForCore')
+  default_properties['abiquo.server.mail.server'] = xml.xpath('./mail/server')
+  default_properties['abiquo.server.mail.user'] = xml.xpath('./mail/user')
+  default_properties['abiquo.server.mail.password'] = xml.xpath('./mail/password')
+  
+  # eventSink property is a special case
+  default_properties['abiquo.rabbitmq.host'] = URI.parse(xml.xpath('./eventSinkAddress')).host rescue '127.0.0.1'
+end
+
+####################
+# am configuration #
+####################
+if File.exist? AM_CONFIG
+  puts '-- am.xml found reading its configuration properties'
+
+  xml = Document.new(File.open(AM_CONFIG)).root
+  default_properties['abiquo.appliancemanager.localRepositoryPath'] = xml.xpath('./repository/path')
+  default_properties['abiquo.appliancemanager.repositoryLocation'] = xml.xpath('./repository/location')
+end
+
+#################################
+# virtual factory configuration #
+#################################
+if File.exist? VIRTUAL_FACTORY_CONFIG
+  puts '-- virtualfactory.xml found reading its configuration properties'
+
+  xml = Document.new(File.open(VIRTUAL_FACTORY_CONFIG)).root
+  default_properties['abiquo.virtualfactory.hyperv.destinationRepositoryPath'] = xml.xpath('./hypervisors/hyperv/destinationRepositoryPath')
+  default_properties['abiquo.virtualfactory.xenserver.repositoryLocation'] = xml.xpath('./hypervisors/xenserver/abiquoRepository')
+  default_properties['abiquo.virtualfactory.storagelink.address'] = xml.xpath('./storagelink/address')
+  default_properties['abiquo.virtualfactory.storagelink.user'] = xml.xpath('./storagelink/user')
+  default_properties['abiquo.virtualfactory.storagelink.password'] = xml.xpath('./storagelink/password')
+end
+
+puts '---'
+
+# Which Abiquo Platform components are installed?
+server_installed = rpm_installed?('abiquo-server')
+rs_installed = rpm_installed?('abiquo-remote-services')
+
+# Backup the properties file first
+if File.exist?(ABIQUO_PROPERTIES)
+  FileUtils.cp ABIQUO_PROPERTIES, ABIQUO_PROPERTIES + "#{Time.now.strftime('%F_%H%M')}.bak"
+end
+
+# Write default INI sections
+File.open(ABIQUO_PROPERTIES, 'w') do |f|
+  if server_installed
+    f.puts "[server]"
+  end
+  if rs_installed
+    f.puts '[remote-services]'
+  end
+end
+
+# Write de properties to the new file
+ini = IniParse.parse(File.read(ABIQUO_PROPERTIES))
+default_properties.each do |key, value|
+  if server_property?(key) and server_installed
+    ini['server'][key] = value.strip.chomp
+  elsif rs_property?(key) and rs_installed
+    ini['remote-services'][key] = value.strip.chomp
+  end
+end
+ini.save(ABIQUO_PROPERTIES)
+
+puts 'Done.'
