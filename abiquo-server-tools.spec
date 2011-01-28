@@ -2,13 +2,12 @@
 
 Name:     abiquo-server-tools
 Version: 1.7
-Release: 4%{?dist}%{?buildstamp}
+Release:  5.v0.0.14%{?dist}%{?buildstamp}
 Summary:  Abiquo Server Tools
 Group:    Development/System 
 License:  Multiple 
 URL:      http://www.abiquo.com 
 Source:  %{name}-%{version}.tar.gz
-Source2: abiquo17-update-config
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
 
@@ -33,7 +32,6 @@ mkdir -p $RPM_BUILD_ROOT/%{_bindir}
 cp -r $RPM_BUILD_DIR/%{name}-%{version}/ $RPM_BUILD_ROOT/%{abiquo_basedir}/tools
 cp $RPM_BUILD_ROOT/%{abiquo_basedir}/tools/abiquoServerCheckState.sh $RPM_BUILD_ROOT/%{_bindir}/
 cp $RPM_BUILD_ROOT/%{abiquo_basedir}/tools/abiquoNodeInfoCollector.sh $RPM_BUILD_ROOT/%{_bindir}/
-cp %{SOURCE2} $RPM_BUILD_ROOT/%{_bindir}/
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -43,9 +41,11 @@ rm -rf $RPM_BUILD_ROOT
 %{abiquo_basedir}/tools/
 %{_bindir}/abiquoServerCheckState.sh
 %{_bindir}/abiquoNodeInfoCollector.sh
-%{_bindir}/abiquo17-update-config
 
 %changelog
+* Wed Jan 26 2011 Sergio Rubio <srubio@abiquo.com> - 1.7-5.v0.0.14
+- upstream update
+
 * Wed Jan 26 2011 Sergio Rubio <srubio@abiquo.com> - 1.7-4
 - upstream update
 

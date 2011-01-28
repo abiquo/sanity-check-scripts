@@ -21,7 +21,6 @@ task :build_srpm do
   `mkdir ~/rpmbuild/SOURCES/abiquo-server-tools-#{rpmver}`
   `cp -r * ~/rpmbuild/SOURCES/abiquo-server-tools-#{rpmver}`
   `tar -C ~/rpmbuild/SOURCES/ -czf ~/rpmbuild/SOURCES/abiquo-server-tools-#{rpmver}.tar.gz abiquo-server-tools-#{rpmver}`
-  `cp abiquo17-* ~/rpmbuild/SOURCES/`
   `rpmbuild -bs abiquo-server-tools.spec`
 end
 
