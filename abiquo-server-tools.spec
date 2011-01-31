@@ -2,7 +2,7 @@
 
 Name:     abiquo-server-tools
 Version: 1.7
-Release:  5.v0.0.14%{?dist}%{?buildstamp}
+Release:  6.v0.0.15%{?dist}%{?buildstamp}
 Summary:  Abiquo Server Tools
 Group:    Development/System 
 License:  Multiple 
@@ -43,6 +43,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/abiquoNodeInfoCollector.sh
 
 %changelog
+* Mon Jan 31 2011 Sergio Rubio <srubio@abiquo.com> - 1.7-6.v0.0.15
+- add redis migration tools
+
 * Wed Jan 26 2011 Sergio Rubio <srubio@abiquo.com> - 1.7-5.v0.0.14
 - upstream update
 
