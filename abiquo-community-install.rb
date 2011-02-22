@@ -36,7 +36,7 @@ end
 
 def check_dist(dist)
     if dist != "ubuntu" and dist != "centos"
-        raise Exception.new "Only supports 'ubuntu' and 'centos'" if dist != ("ubuntu" and "centos")
+        raise Exception.new("Only supports 'ubuntu' and 'centos'")
     end
     dists = { "ubuntu" => `cat /etc/issue`.include?("Ubuntu"), "centos" => `cat /etc/issue`.include?("CentOS") }
     return dists[dist]
@@ -49,7 +49,7 @@ def enable_services
         out = `chkconfig #{s} on 2>&1`
         if $?.exitstatus != 0
             Log.error "An error ocurred when enabling services!"
-            raise Exception.new out
+            raise Exception.new(out)
         end
     end
     
@@ -64,7 +64,7 @@ def start_services
         out = `service #{s} restart 2>&1`
         if $?.exitstatus != 0
             Log.error "An error ocurred when starting services!"
-            raise Exception.new out
+            raise Exception.new(out)
         end
     end
     
@@ -107,7 +107,7 @@ def create_schemas(user = 'root', password = '')
             Log.info 'kinton-schema imported succesfully.'
         else
             Log.error "Error importing kinton-schema"
-            raise Exception.new out
+            raise Exception.new(out)
         end
     else
         Log.warn 'kinton schema found. Skipping schema creation.'
@@ -125,15 +125,12 @@ def disable_iptables
         Log.info 'Disabled correctly'
     else
         Log.error "An error ocurred when disabling iptables"
-        raise Exception.new out 
+        raise Exception.new(out)
     end
 end
 
 
 def disable_selinux
-
-    return if check_dist("ubuntu")
-
     Log.info 'Disabling SELinux...'
     
     out = `sed s/SELINUX=enabled/SELINUX=disabled/ /etc/sysconfig/selinux 2>&1`
@@ -142,7 +139,7 @@ def disable_selinux
         Log.info 'Disabled correctly'
     else
         Log.error "An error ocurred when disabling SELinux"
-        raise Exception.new out
+        raise Exception.new(out)
     end
 end
 
@@ -156,7 +153,7 @@ def export_nfs
         Log.info '/opt/vm_repository created'
     else
         Log.error "An error ocurred when creating /opt/vm_repository!"
-        raise Exception.new out
+        raise Exception.new(out)
     end
     
     File.open('/etc/exports','w') do |file|
@@ -178,7 +175,7 @@ def config_abiquo
     out = test_mysql_con("127.0.0.1", mysql_user.delete('"', '&', '|', '\\'), mysql_pwd.delete('"', '&', '|', '\\'))
     if $?.exitstatus != 0
         Log.error "Mysql credentials are not valid. User: #{mysql_user}, Pass: #{mysql_pwd}"
-        raise Exception.new out
+        raise Exception.new(out)
     end
 
     if nfs_repo_ip == ("127.0.0.1" or "localhost")
@@ -189,33 +186,44 @@ def config_abiquo
     out = `ping -c 2 #{nfs_repo_ip} 2>&1 >/dev/null`    
     if $?.exitstatus != 0
         Log.error "Ip is not accessible"
-        raise Exception.new out
+        raise Exception.new(out)
     end
 
-    #Modify /opt/abiquo/tomcat/webapps/api/WEB-INF/classes/tomcat/META-INF/context.xml or tomcat/conf/... if already deployed
+    #Modify api config
     ['/opt/abiquo/tomcat/conf/Catalina/localhost/api.xml', '/opt/abiquo/tomcat/webapps/api/META-INF/context.xml'].each do |file|
         if File.exists? file
+            temp = ''
             File.open(file,'r') do |read|
-                temp = read.read.gsub("${server.database.username}","#{mysql_user}").gsub("${server.database.password}","#{mysql_pwd}")
-                temp = temp.gsub("username=\"root\"","username=\"#{mysql_user}\"").gsub("password=\"root\"","password=\"#{mysql_pwd}\"")
-                File.open(file,'w') do |write|
-                    write.truncate(0)
-                    write.puts temp
-                end
+                temp = read.read()
             end
+            
+            temp = temp.gsub("${server.database.username}","#{mysql_user}").gsub("${server.database.password}","#{mysql_pwd}")
+            temp = temp.gsub("username=\"root\"","username=\"#{mysql_user}\"").gsub("password=\"root\"","password=\"#{mysql_pwd}\"")
+            
+            File.open(file,'w') do |write|
+                write.puts temp
+            end
+        else
+            puts "File #{file} does not exist. Ommiting"
         end
     end
+
     
-    #Modify /opt/abiquo/tomcat/webapps/server/WEB-INF/classes/tomcat/META-INF/context.xml or tomcat/conf/... if already deployed
+    #Modify server config
     ['/opt/abiquo/tomcat/conf/Catalina/localhost/server.xml', '/opt/abiquo/tomcat/webapps/server/META-INF/context.xml'].each do |file|
         if File.exists? file
+            temp = ''
             File.open(file,'r') do |read|
-                temp = read.read.gsub("username=\"root\"","username=\"#{mysql_user}\"").gsub("password=\"root\"","password=\"#{mysql_pwd}\"")
-                File.open(file,'w') do |write|
-                    write.truncate(0)
-                    write.puts temp
-                end
+                temp = read.read()
             end
+            
+            temp = temp.gsub("username=\"root\"","username=\"#{mysql_user}\"").gsub("password=\"root\"","password=\"#{mysql_pwd}\"")
+            
+            File.open(file,'w') do |write|
+                write.puts temp
+            end
+        else
+            puts "File #{file} does not exist. Ommiting"
         end
     end
     
@@ -241,6 +249,12 @@ end
 
 
 ################ Main ################
+
+if not `whoami`.match("root")
+    puts "You need to be root in order to run this script"
+    exit
+end
+
 Log.info "-" * 50
 Log.info "Running Abiquo Community install..."
 
@@ -248,15 +262,18 @@ begin
     if check_dist("centos")
         enable_services()
         start_services()
+        disable_selinux()
+        `/etc/init.d/abiquo-tomcat stop`
+    else
+        `/etc/init.d/abiquo-core stop`
     end
+    
     config_abiquo()
     disable_iptables()
-    disable_selinux()
     export_nfs()
+    Log.info "Install finished"
 rescue Exception => e
-    Log.error "An exception ocurred: #{e}"
-    return
+    Log.error "An exception ocurred: #{e.backtrace}"
+    exit
 end
-
-Log.info "Install finished"
 Log.info "-" * 50
